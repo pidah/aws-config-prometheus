@@ -2,42 +2,54 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/configservice"
+	_ "github.com/motemen/go-loghttp/global"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/push"
 	"log"
 	"net/http"
 	"os"
 	"time"
-	//	"reflect"
-	"encoding/json"
 )
 
-var PROMETHEUS_ENDPOINT = "http://localhost:9091"
+var PROMETHEUS_ENDPOINT = os.Getenv("PROMETHEUS_ENDPOINT")
 
 func main() {
 
+	if PROMETHEUS_ENDPOINT == "" {
+		log.Println("error: You must set the PROMETHEUS_ENDPOINT environment variable")
+		os.Exit(1)
+	}
+
+		log.Println("info: starting app...")
 	mux := http.NewServeMux()
-	mux.HandleFunc("/AWSConfig", runTest)
+	mux.HandleFunc("/AWSConfig", AWSConfigHandler)
 	log.Fatal(http.ListenAndServe(":8080", mux))
 }
 
-func runTest(w http.ResponseWriter, r *http.Request) {
+func AWSConfigHandler(w http.ResponseWriter, r *http.Request) {
 	type Status struct {
 		Status string `json:"status"`
 	}
 
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	AWSConfig()
-	w.WriteHeader(http.StatusOK)
-	s := Status{Status: "passed"}
-	json.NewEncoder(w).Encode(s)
+	if err := AWSConfig(); err != nil {
+		log.Println("error: Could not push metrics:", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		s := Status{Status: "failed"}
+		json.NewEncoder(w).Encode(s)
+	} else {
+		log.Println("info: metrics pushed successfully.")
+		w.WriteHeader(http.StatusOK)
+		s := Status{Status: "success"}
+		json.NewEncoder(w).Encode(s)
+	}
 
 	return
 }
-
 
 func AWSConfig() error {
 
@@ -45,7 +57,7 @@ func AWSConfig() error {
 	defer cancelFn()
 
 	svc := session.Must(session.NewSession())
-	cs := configservice.New(svc, aws.NewConfig().WithRegion(aws_region))
+	cs := configservice.New(svc, aws.NewConfig())
 	params := &configservice.DescribeConfigRulesInput{}
 	data, err := cs.DescribeConfigRulesWithContext(ctx, params)
 	if err != nil {
@@ -94,6 +106,6 @@ func AWSConfig() error {
 		}
 	}
 
-return nil
+	return nil
 
 }
