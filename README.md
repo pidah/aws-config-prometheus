@@ -17,7 +17,7 @@ Ideally AWS credentials should not be used. IAM instance profiles should be used
 ## The microservice exposes an endpoint at /awsconfig
 To trigger the microservice to retrieve metrics from AWS Config and push to the prometheus pushgateway, run the following:
 
-## curl localhost:8080/awsconfig
+curl localhost:8080/awsconfig
 
 
 ## For more details look at the docker log output
