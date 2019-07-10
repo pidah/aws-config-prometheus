@@ -2,7 +2,7 @@ Simple Go microservice app for retrieving AWS Config metrics and pushing to prom
 ---------------------------------------------------------------------------------------------------
 To build a docker image of the project just run the following:
 
-##  docker build .
+docker build .
 
 and then launch the container with the image built above:
 
